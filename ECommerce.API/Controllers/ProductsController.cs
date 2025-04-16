@@ -1,6 +1,8 @@
 using ECommerce.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.JsonPatch;
+using ECommerce.API.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace ECommerce.API.Controllers
 {
@@ -8,19 +10,21 @@ namespace ECommerce.API.Controllers
     [Route("api/[controller]")]
     public class ProductsController : ControllerBase
     {
-        // Mock product data for testing
-        private static List<Product> _products = new()
+        private readonly ApplicationDbContext _context;
+
+        // Connection to database
+        public ProductsController(ApplicationDbContext context)
         {
-            new Product { Id = 1, Name = "Laptop", Price = 15000, Description = "Gaming Laptop" },
-            new Product { Id = 2, Name = "Mouse", Price = 350, Description = "Wireless Mouse" }
-        };
+            _context = context;
+        }
 
         // GET: /api/products
-        // Returns all products
+        // Returns all products from the database
         [HttpGet]
         public IActionResult GetAll()
         {
-            return Ok(_products);
+            var products = _context.Products.ToList();
+            return Ok(products);
         }
 
         // GET: /api/products/{id}
@@ -28,7 +32,7 @@ namespace ECommerce.API.Controllers
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
-            var product = _products.FirstOrDefault(p => p.Id == id);
+            var product = _context.Products.Find(id);
             if (product == null)
                 return NotFound(new { message = "Product not found" });
 
@@ -40,36 +44,33 @@ namespace ECommerce.API.Controllers
         [HttpGet("list")]
         public IActionResult List([FromQuery] string? name, [FromQuery] string? sortBy)
         {
-            var result = _products.AsQueryable();
+            var result = _context.Products.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(name))
                 result = result.Where(p => p.Name.Contains(name, StringComparison.OrdinalIgnoreCase));
 
-            // Sorting logic
             if (sortBy == "price")
                 result = result.OrderBy(p => p.Price);
             else if (sortBy == "name")
                 result = result.OrderBy(p => p.Name);
 
-            return Ok(result);
+            return Ok(result.ToList());
         }
 
         // POST: /api/products
-        // Creates a new product
+        // Creates a new product and saves it to the database
         [HttpPost]
         public IActionResult Create([FromBody] Product product)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
-            product.Id = _products.Max(p => p.Id) + 1;
             product.CreatedAt = DateTime.UtcNow;
 
-            _products.Add(product);
+            _context.Products.Add(product);
+            _context.SaveChanges();
 
-            return CreatedAtAction(nameof(GetById), new { id = product.Id }, product); // REturn 201
+            return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
         }
 
         // PUT: /api/products/{id}
@@ -80,7 +81,7 @@ namespace ECommerce.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var existingProduct = _products.FirstOrDefault(p => p.Id == id);
+            var existingProduct = _context.Products.Find(id);
             if (existingProduct == null)
                 return NotFound(new { message = "Product not found" });
 
@@ -88,24 +89,26 @@ namespace ECommerce.API.Controllers
             existingProduct.Price = updatedProduct.Price;
             existingProduct.Description = updatedProduct.Description;
 
-            return Ok(existingProduct); 
+            _context.SaveChanges();
+
+            return Ok(existingProduct);
         }
 
         // PATCH: /api/products/{id}
-        // Partially updates an existing product
+        // Partially updates an existing product using JSON Patch
         [HttpPatch("{id}")]
         public IActionResult Patch(int id, [FromBody] JsonPatchDocument<Product> patchDoc)
         {
-            var product = _products.FirstOrDefault(p => p.Id == id);
+            var product = _context.Products.Find(id);
             if (product == null)
                 return NotFound(new { message = "Product not found" });
 
             patchDoc.ApplyTo(product);
 
             if (!TryValidateModel(product))
-            {
                 return BadRequest(ModelState);
-            }
+
+            _context.SaveChanges();
 
             return Ok(product);
         }
@@ -115,13 +118,14 @@ namespace ECommerce.API.Controllers
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            var product = _products.FirstOrDefault(p => p.Id == id);
+            var product = _context.Products.Find(id);
             if (product == null)
                 return NotFound(new { message = "Product not found" });
 
-            _products.Remove(product);
-            return NoContent(); 
-        }
+            _context.Products.Remove(product);
+            _context.SaveChanges();
 
+            return NoContent();
+        }
     }
 }

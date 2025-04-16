@@ -1,4 +1,6 @@
+using ECommerce.API.Data;
 using ECommerce.API.Middlewares;
+using Microsoft.EntityFrameworkCore;
 
 public class Startup
 {
@@ -10,6 +12,8 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
+        services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlite("Data Source=ecommerce.db"));
         services.AddControllers();
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
