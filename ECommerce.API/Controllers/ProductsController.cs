@@ -2,7 +2,7 @@ using ECommerce.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.JsonPatch;
 using ECommerce.API.Data;
-using Microsoft.EntityFrameworkCore;
+using ECommerce.API.Attributes;
 
 namespace ECommerce.API.Controllers
 {
@@ -16,6 +16,14 @@ namespace ECommerce.API.Controllers
         public ProductsController(ApplicationDbContext context)
         {
             _context = context;
+        }
+
+        // To login
+        [HttpGet("secure")]
+        [CustomAuthorize]
+        public IActionResult SecureEndpoint()
+        {
+            return Ok(new { message = "You have access to this protected endpoint." });
         }
 
         // GET: /api/products

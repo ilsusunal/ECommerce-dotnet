@@ -1,6 +1,8 @@
 using ECommerce.API.Data;
 using ECommerce.API.Middlewares;
+using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
+
 
 public class Startup
 {
@@ -13,8 +15,11 @@ public class Startup
     public void ConfigureServices(IServiceCollection services)
     {
         services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseSqlite("Data Source=ecommerce.db"));
+            options.UseSqlite("Data Source=ecommerce.db"));
+
         services.AddControllers();
+
+        services.AddFluentValidationAutoValidation();
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
 
@@ -28,6 +33,7 @@ public class Startup
             });
         });
     }
+
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
